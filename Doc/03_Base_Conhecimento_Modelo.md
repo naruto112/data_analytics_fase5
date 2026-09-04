@@ -31,6 +31,23 @@ onde `defasagem = Fase Efetiva − Fase Ideal` (mais negativo = mais atrasado).
 
 ## 2. Decisões de escopo
 
+### 2.0 Padronização das categorias
+
+A planilha usa rótulos diferentes por ciclo para o mesmo conceito. Sem tratamento, o encoder
+criaria categorias duplicadas:
+
+| Campo | Antes | Depois |
+|---|---|---|
+| `genero` | "Feminino", "Masculino", "Menina", "Menino" (4) | "Feminino", "Masculino" (2) |
+| `instituicao` | 11 categorias, com "Pública" e "Escola Pública" separadas | 6 categorias |
+
+Mapeamento aplicado: `Menina`→`Feminino`, `Menino`→`Masculino`, `Escola Pública`→`Pública`,
+`Rede Decisão`/`Escola JP II`→`Privada`, `Nenhuma das opções acima`→nulo.
+
+O impacto em performance é neutro (ROC-AUC 0,8805 → 0,8835; PR-AUC praticamente igual), mas o
+ganho é de **consistência**: o formulário do Streamlit passa a ter opções limpas e sem
+duplicatas, e o modelo deixa de dividir o sinal entre rótulos sinônimos.
+
 ### 2.1 Por que só defasagem, e não também queda de desempenho
 
 O enunciado menciona *"queda no desempenho **ou** aumento da defasagem"*, mas a frase que pede
@@ -145,15 +162,15 @@ O modelo quase quadruplica essa capacidade.
 
 | Métrica | Valor | Leitura |
 |---|---|---|
-| Acurácia | 0,810 | 81% de acertos totais |
-| Acurácia balanceada | 0,810 | Desempenho equilibrado nas duas classes |
-| Precisão | 0,505 | De cada 10 sinalizados, ~5 pioram |
-| **Recall** | **0,809** | **Captura 8 de cada 10 alunos que vão piorar** |
-| F1 | 0,622 | Bom equilíbrio |
-| ROC-AUC | 0,883 | Forte capacidade de ordenação |
-| PR-AUC | 0,685 | ~4× melhor que o acaso |
-| KS | 0,633 | Boa separação |
-| Brier | 0,099 | Probabilidades confiáveis |
+| Acurácia | 0,824 | 82% de acertos totais |
+| Acurácia balanceada | 0,791 | Desempenho equilibrado nas duas classes |
+| Precisão | 0,532 | De cada 10 sinalizados, ~5 pioram |
+| **Recall** | **0,735** | **Captura ~7 de cada 10 alunos que vão piorar** |
+| F1 | 0,617 | Bom equilíbrio |
+| ROC-AUC | 0,874 | Forte capacidade de ordenação |
+| PR-AUC | 0,695 | ~4× melhor que o acaso (piso 0,173) |
+| KS | 0,645 | Boa separação |
+| Brier | 0,100 | Probabilidades confiáveis |
 
 ---
 
@@ -167,14 +184,14 @@ Previsto vs. realidade, no conjunto de teste:
 
 | Faixa | Alunos | Previsto | Aconteceu |
 |---|---|---|---|
-| 0–10% | 205 | 3,5% | 3,4% ✅ |
-| 10–20% | 39 | 14,5% | 15,4% ✅ |
-| 20–30% | 33 | 24,1% | 36,4% |
-| 30–50% | 25 | 40,2% | 36,0% ✅ |
-| 50–70% | 30 | 58,8% | 50,0% |
-| 70–100% | 21 | 83,0% | 90,5% |
+| 0–10% | 195 | 3,1% | 3,1% ✅ |
+| 10–20% | 38 | 14,6% | 10,5% |
+| 20–30% | 44 | 23,9% | 34,1% |
+| 30–50% | 33 | 41,2% | 36,4% ✅ |
+| 50–70% | 22 | 58,3% | 50,0% |
+| 70–100% | 21 | 80,6% | 95,2% |
 
-Probabilidade média prevista **18,7%** vs. taxa real **19,3%** — praticamente idêntica.
+Probabilidade média prevista **18,5%** vs. taxa real **19,3%** — praticamente idêntica.
 
 **Isso autoriza a leitura de frequência no Streamlit:**
 
@@ -188,20 +205,48 @@ E **não**: "este aluno tem X% de chance" — afirmação impossível de verific
 
 | # | Feature | Importância | Interpretação |
 |---|---|---|---|
-| 1 | `defasagem` | **+0,211** | Quem já está defasado tende a se defasar mais — efeito acumulativo. |
-| 2 | `idade` | **+0,177** | A fase ideal sobe com a idade; mais velhos têm risco estrutural maior. |
-| 3 | `ipv` | **+0,119** | Ponto de Virada — indicador socioemocional mais preditivo. |
-| 4 | `ano_ingresso` | **+0,102** | Tempo de casa na Passos Mágicos. |
-| 5 | `ida` | +0,044 | Desempenho acadêmico, contribuição moderada. |
+| 1 | `defasagem` | **+0,233** | Quem já está defasado tende a se defasar mais — efeito acumulativo. |
+| 2 | `idade` | **+0,176** | A fase ideal sobe com a idade; mais velhos têm risco estrutural maior. |
+| 3 | `ano_ingresso` | **+0,113** | Tempo de casa na Passos Mágicos. |
+| 4 | `ipv` | **+0,110** | Ponto de Virada — indicador socioemocional mais preditivo. |
+| 5 | `ida` | +0,038 | Desempenho acadêmico, contribuição moderada. |
 | 6–13 | `instituicao`, `inde`, `ips`, `fase_ordem`, `ieg`, `genero`, `iaa`, `pedra` | < 0,03 | Contribuição pequena. |
 
 **Nota de equidade:** `genero` tem importância praticamente nula — o modelo não está
 discriminando por gênero.
 
-**Para o Streamlit:** destacar `defasagem`, `idade`, `ipv` e `ano_ingresso` na explicação de
+**Para o Streamlit:** destacar `defasagem`, `idade`, `ano_ingresso` e `ipv` na explicação de
 "por que este aluno foi sinalizado" — elas concentram a maior parte da capacidade preditiva.
 
 ---
+
+## 6.1 ⚠️ Como o modelo usa a defasagem (contraintuitivo)
+
+`defasagem` é a variável mais importante, mas a relação com o risco é **inversa** ao esperado:
+
+| Defasagem atual | Alunos | Taxa real de piora no ano seguinte |
+|---|---|---|
+| −3 / −4 | 16 | **0,0%** |
+| −2 | 200 | 2,5% |
+| −1 | 590 | 10,7% |
+| **0 (em dia)** | 513 | **27,9%** |
+| +1 | 38 | 47,4% |
+| +2 | 8 | 87,5% |
+
+**Quem já está muito defasado quase não se defasa mais; quem está em dia é quem mais escorrega.**
+
+A explicação é mecânica: a fase ideal sobe conforme a idade avança. Um aluno em dia que não
+avança de fase no ano seguinte automaticamente cai para −1. Já um aluno em −3 precisaria de uma
+queda adicional grande para piorar, o que é raro.
+
+**Consequência para a leitura do resultado:** um risco baixo em aluno muito defasado **não
+significa ausência de problema pedagógico** — significa apenas que o indicador específico de
+*aumento* da defasagem tende a ser baixo naquele grupo. Para esses alunos, a atenção deve vir
+dos demais indicadores (IDA, IEG, IPV), não deste modelo.
+
+Essa ressalva está implementada no app: a explicação exibida muda conforme a faixa de defasagem
+do aluno, para não induzir a equipe a concluir que "risco baixo = aluno bem".
+
 
 ## 7. Guia de implementação do Streamlit
 
@@ -239,6 +284,9 @@ dentro do pipeline.
 
 ### 7.3 Campos do formulário (todos obrigatórios)
 
+> As opções de `genero` e `instituicao` abaixo já refletem a **padronização** descrita na
+> seção 2.0 — use exatamente estes rótulos, pois são os que o modelo reconhece.
+
 | Campo | Tipo | Domínio |
 |---|---|---|
 | `defasagem` | numérico | Fase Efetiva − Fase Ideal (negativo = atrasado) |
@@ -247,7 +295,7 @@ dentro do pipeline.
 | `ano_ingresso` | numérico | Ano de entrada na Passos Mágicos |
 | `ida`, `ieg`, `iaa`, `ips`, `ipv`, `inde` | numérico | 0 a 10 |
 | `genero` | seleção | "Feminino" / "Masculino" |
-| `instituicao` | seleção | "Pública", "Privada", "Privada - Programa de Apadrinhamento", etc. |
+| `instituicao` | seleção | 6 opções: "Pública", "Privada", "Privada - Programa de Apadrinhamento", "Privada *Parcerias com Bolsa 100%", "Privada - Pagamento por *Empresa Parceira", "Concluiu o 3º EM" |
 | `pedra` | seleção | "Quartzo", "Ágata", "Ametista", "Topázio" |
 
 ### ⚠️ 7.4 Por que a obrigatoriedade importa
@@ -279,12 +327,12 @@ Por isso:
 
    | Faixa | Intervalo | % da base | Taxa real de piora | Ação |
    |---|---|---|---|---|
-   | Baixo | < 25% | 75,1% | 7,5% | Sem sinal de alerta |
-   | Médio | 25–50% | 10,5% | 37,8% | Monitorar |
-   | Alto | ≥ 50% | 14,4% | 66,7% | Prioridade |
+   | Baixo | < 25% | 73,4% | 6,9% | Sem sinal de alerta |
+   | Médio | 25–50% | 14,4% | 37,3% | Monitorar |
+   | Alto | ≥ 50% | 12,2% | 72,1% | Prioridade |
 
-   A coluna "taxa real de piora" cresce de forma consistente entre as faixas (7,5% → 37,8% →
-   66,7%) — é a validação prática da calibração e o que sustenta a frase mostrada ao usuário.
+   A coluna "taxa real de piora" cresce de forma consistente entre as faixas (6,9% → 37,3% →
+   72,1%) — é a validação prática da calibração e o que sustenta a frase mostrada ao usuário.
 2. **Ranking de prioridade** — ordenar por probabilidade decrescente para atendimento em lote.
    A ordenação é a parte mais robusta do modelo.
 3. **Leitura de frequência** — "de cada 100 alunos assim, ~30 pioram".
