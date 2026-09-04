@@ -1,0 +1,33 @@
+# =====================================================================
+# Projeto: Previsão de Risco de Defasagem — Passos Mágicos (PEDE)
+# Python 3.10+ (desenvolvido e testado em 3.12)
+#
+# Instalação:  pip install -r requirements.txt
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# Núcleo — necessário para RODAR O APP STREAMLIT
+# ---------------------------------------------------------------------
+streamlit==1.63.0
+pandas==3.0.2
+numpy==2.4.4
+joblib==1.5.3
+scipy==1.17.1
+
+# ATENÇÃO: as duas versões abaixo devem ser mantidas exatamente como
+# estão. O arquivo `modelo_risco_defasagem.joblib` foi serializado com
+# elas; versões diferentes podem falhar ao carregar o modelo ou alterar
+# silenciosamente as previsões. Para usar outras versões, re-treine o
+# modelo executando `Modelo_Risco_Defasagem_PEDE.ipynb`.
+scikit-learn==1.8.0
+imbalanced-learn==0.14.2
+
+# ---------------------------------------------------------------------
+# Notebooks — necessário apenas para REEXECUTAR a EDA e o treino
+# (não é preciso para rodar o app)
+# ---------------------------------------------------------------------
+jupyter==1.1.1
+ipykernel==7.1.0
+matplotlib==3.10.8
+seaborn==0.13.2
+openpyxl==3.1.5
