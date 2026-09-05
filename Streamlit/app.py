@@ -199,6 +199,14 @@ def exibir_resultado(probabilidade: float, registro: dict):
     col1.metric("Probabilidade estimada", f"~{probabilidade:.0%}")
     col2.metric("Ação sugerida", acao)
 
+    # Exibida aqui, junto do resultado, e não como prévia abaixo do formulário:
+    # widgets dentro de um st.form só atualizam no envio, então uma legenda
+    # antes do submit mostraria o valor do envio anterior.
+    st.caption(
+        f"Campo calculado automaticamente — **Pedra:** {registro['pedra']} "
+        f"(faixa do INDE {registro['inde']:.2f} informado)"
+    )
+
     st.info(
         f"**Como ler:** de cada 100 alunos com um perfil parecido com este, "
         f"cerca de **{probabilidade * 100:.0f}** aumentam a defasagem no ano "
@@ -219,7 +227,7 @@ def exibir_resultado(probabilidade: float, registro: dict):
                 {"Variável": "IPV (Ponto de Virada)", "Valor": registro["ipv"]},
             ]
         )
-        st.dataframe(principais, hide_index=True, use_container_width=True)
+        st.dataframe(principais, hide_index=True, width="stretch")
 
         if registro["defasagem"] >= 0:
             st.write(
@@ -305,12 +313,9 @@ with st.form("formulario_aluno"):
     st.subheader("Índice geral")
     inde = st.slider("INDE — Índice de Desenvolvimento Educacional", 0.0, 10.0, 7.5, 0.01)
 
-    enviado = st.form_submit_button("Calcular risco", use_container_width=True)
+    enviado = st.form_submit_button("Calcular risco", width="stretch")
 
 fase_ordem = FASES[fase_rotulo]
-pedra_calc = pedra_para_inde(inde)
-
-st.caption(f"Campo calculado automaticamente — **Pedra:** {pedra_calc} (a partir do INDE)")
 
 if enviado:
     registro = montar_registro(
@@ -337,8 +342,9 @@ if enviado:
             probabilidade = prever(pd.DataFrame([registro]))[0]
         st.divider()
         exibir_resultado(probabilidade, registro)
-    except Exception:
+    except Exception as erro:
         st.error(
-            "Não foi possível calcular o risco com os dados informados. "
+            "Não foi possível calcular o risco com os dados informados: "
+            f"`{type(erro).__name__}: {erro}`\n\n"
             "Revise os campos e tente novamente."
         )
