@@ -1,4 +1,3 @@
-import io
 import os
 import sys
 from pathlib import Path
@@ -184,41 +183,6 @@ def prever(registros: pd.DataFrame):
     return MODELO.predict_proba(registros[FEATURES])[:, 1]
 
 
-def ler_csv_utf8(arquivo) -> pd.DataFrame:
-    """Lê o CSV enviado exigindo codificação UTF-8.
-
-    Arquivos em Latin-1/Windows-1252 (o que o Excel em português gera ao
-    salvar como "CSV separado por vírgulas") são REJEITADOS em vez de lidos
-    com os acentos corrompidos — "Pública" viraria "PÃºblica" e deixaria de
-    casar com as categorias que o modelo viu no treino.
-
-    O BOM que o Excel escreve ao salvar como "CSV UTF-8" é aceito e removido,
-    pois é UTF-8 válido; mantê-lo corromperia o nome da primeira coluna.
-
-    Levanta ValueError com uma mensagem pronta para exibição.
-    """
-    bruto = arquivo.getvalue()
-
-    try:
-        texto = bruto.decode("utf-8-sig")
-    except UnicodeDecodeError as erro:
-        # Localiza o problema para o usuário: linha e byte ofensivo.
-        linha = bruto.count(b"\n", 0, erro.start) + 1
-        byte_invalido = bruto[erro.start]
-        raise ValueError(
-            f"O arquivo não está em **UTF-8**: o byte `0x{byte_invalido:02X}` "
-            f"na linha {linha} não é válido nessa codificação.\n\n"
-            "Provavelmente ele foi salvo em Latin-1 / Windows-1252. "
-            "Salve novamente em UTF-8 e envie de novo:\n\n"
-            "- **Excel:** Arquivo → Salvar como → *CSV UTF-8 (delimitado por vírgulas)*\n"
-            "- **Google Planilhas:** Arquivo → Fazer download → *CSV* (já sai em UTF-8)\n"
-            "- **VS Code:** clique na codificação na barra inferior → "
-            "*Save with Encoding* → *UTF-8*"
-        ) from erro
-
-    return pd.read_csv(io.StringIO(texto))
-
-
 def exibir_resultado(probabilidade: float, registro: dict):
     """Exibe a faixa de risco, a leitura de frequência e o porquê."""
     faixa, acao = faixa_de_risco(probabilidade)
@@ -280,14 +244,8 @@ def exibir_resultado(probabilidade: float, registro: dict):
 
 
 # ------------------------------------------------------------------
-# Abas: consulta individual e análise em lote
+# Formulário de consulta individual
 # ------------------------------------------------------------------
-# aba_individual, aba_lote = st.tabs(["👤 Aluno individual", "📄 Análise em lote (CSV)"])
-
-# ------------------------------------------------------------------
-# Aba 1 — Formulário de aluno individual
-# ------------------------------------------------------------------
-# with aba_individual:
 with st.form("formulario_aluno"):
     st.subheader("Dados do aluno")
 

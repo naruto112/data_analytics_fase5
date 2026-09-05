@@ -5,8 +5,7 @@ Desenvolvimento Educacional) da Associação Passos Mágicos, ciclos 2022–2024
 
 O modelo estima a **probabilidade de um aluno aumentar sua defasagem escolar no ciclo
 seguinte**, permitindo que a equipe pedagógica priorize acompanhamento preventivo. O resultado é
-entregue em uma aplicação Streamlit com consulta individual (a análise em lote está em
-desenvolvimento).
+entregue em uma aplicação Streamlit de consulta individual.
 
 ---
 
@@ -93,8 +92,6 @@ Para encerrar, pressione `Ctrl + C` no terminal.
 
 ## Como usar a aplicação
 
-### 👤 Aluno individual
-
 Preencha o formulário com os dados do aluno e clique em **Calcular risco**. Todos os campos são
 obrigatórios.
 
@@ -107,24 +104,6 @@ Dois campos são **calculados automaticamente** e exibidos abaixo do formulário
 
 O resultado mostra a faixa de risco (🟢 Baixo / 🟡 Médio / 🔴 Alto), a probabilidade estimada e
 uma explicação dos fatores que mais pesaram.
-
-### 📄 Análise em lote (CSV) — *temporariamente desativada*
-
-> Esta aba está desligada no código enquanto a interface é desenvolvida por partes. A descrição
-> abaixo vale para quando ela for reativada.
-
-Envie um CSV com uma linha por aluno para gerar o ranking de prioridade. O arquivo precisa estar
-codificado em **UTF-8**. Colunas obrigatórias:
-
-```
-idade, genero, fase_ordem, ano_ingresso, instituicao, ida, ieg, iaa, ips, ipv, inde
-```
-
-A coluna `ra` é opcional e serve apenas para identificar o aluno no resultado. Há um CSV de
-exemplo disponível para download dentro da própria aba.
-
-Nessa aba também é possível ajustar o **limiar de sinalização**, definindo quantos alunos entram
-na lista de acompanhamento conforme a capacidade da equipe.
 
 ---
 
@@ -195,4 +174,4 @@ Documentação completa das decisões, métricas e limitações em
 | Erro ou aviso ao carregar o modelo | Versão de `scikit-learn` ou `imbalanced-learn` diferente | Use as versões fixadas no `requirements.txt` ou re-treine pelo notebook |
 | `command not found: streamlit` | Ambiente virtual não ativado — ou ativado, mas sobreposto no `PATH` por outro Python (o instalador do python.org escreve no `~/.zprofile`, que é lido depois da ativação) | Confirme com `which streamlit`. Se não apontar para o `.venv`, chame pelo caminho: `.venv/bin/streamlit run Streamlit/app.py` |
 | Porta 8501 ocupada | Outra instância rodando | `streamlit run Streamlit/app.py --server.port 8502` |
-| Previsão parece estranha em lote | Categoria fora do domínio esperado | Confira `genero` e `instituicao` (valores aceitos na seção 7.3 de `Doc/Base_Conhecimento_Modelo.md`) |
+| Previsão parece estranha | Categoria fora do domínio esperado | Confira `genero` e `instituicao` (valores aceitos na seção 7.3 de `Doc/Base_Conhecimento_Modelo.md`) |
