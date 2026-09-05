@@ -159,13 +159,17 @@ def montar_registro(
     idade, genero, fase_ordem, ano_ingresso, instituicao,
     ida, ieg, iaa, ips, ipv, inde, defasagem,
 ) -> dict:
-    """Monta o registro no formato esperado pelo modelo.
+    """Monta o registro do aluno.
 
     `defasagem` é informada por quem preenche, e não derivada de `fase_ordem`
     e `idade`: o modelo foi treinado com a coluna medida da planilha do PEDE,
     que diverge da fórmula em 10% das linhas da base. Como essa é a variável
-    de maior peso do modelo (~31%), derivá-la mudaria a entrada justamente
-    onde ela mais importa. `pedra` continua derivada do INDE."""
+    de maior peso do modelo (~30%), derivá-la mudaria a entrada justamente
+    onde ela mais importa.
+
+    `pedra` não é feature do modelo (foi removida por ser o INDE em faixas —
+    ver seção 2.4 do Doc/Base_Conhecimento_Modelo.md); fica no registro só
+    para exibição, e `prever()` seleciona apenas as colunas de FEATURES."""
     return {
         "defasagem": int(defasagem),
         "fase_ordem": int(fase_ordem),
@@ -203,8 +207,9 @@ def exibir_resultado(probabilidade: float, registro: dict):
     # widgets dentro de um st.form só atualizam no envio, então uma legenda
     # antes do submit mostraria o valor do envio anterior.
     st.caption(
-        f"Campo calculado automaticamente — **Pedra:** {registro['pedra']} "
-        f"(faixa do INDE {registro['inde']:.2f} informado)"
+        f"Classificação **Pedra:** {registro['pedra']} "
+        f"(faixa do INDE {registro['inde']:.2f} informado). "
+        "Referência do PEDE — não entra no cálculo do risco."
     )
 
     st.info(

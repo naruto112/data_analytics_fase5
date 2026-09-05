@@ -95,17 +95,15 @@ Para encerrar, pressione `Ctrl + C` no terminal.
 Preencha o formulário com os dados do aluno e clique em **Calcular risco**. Todos os campos são
 obrigatórios.
 
-Um campo é **calculado automaticamente** e exibido abaixo do formulário:
-
-| Campo | Como é calculado |
-|---|---|
-| `pedra` | Faixa correspondente ao INDE informado |
-
 A **defasagem** (`Fase Efetiva − Fase Ideal`, negativo = atrasado) é informada por quem
 preenche, e não derivada da idade e da fase. O modelo foi treinado com o valor medido no PEDE,
 que diverge da fórmula em 10% dos alunos da base — e como essa é a variável de maior peso do
-modelo (~31% da decisão), derivá-la mudaria a entrada justamente onde ela mais importa. Se o
+modelo (~30% da decisão), derivá-la mudaria a entrada justamente onde ela mais importa. Se o
 valor informado divergir do que idade e fase sugerem, o app avisa sem bloquear o cálculo.
+
+Junto do resultado o app mostra a classificação **Pedra**, calculada a partir do INDE. Ela é
+uma referência do PEDE para a equipe e **não entra no cálculo do risco** — foi removida do
+modelo por ser apenas o INDE em faixas.
 
 O resultado mostra a faixa de risco (🟢 Baixo / 🟡 Médio / 🔴 Alto), a probabilidade estimada e
 uma explicação dos fatores que mais pesaram.
@@ -155,13 +153,13 @@ próprio notebook quanto da raiz do projeto.
 
 | Item | Valor |
 |---|---|
-| Algoritmo | GradientBoosting + SMOTE + calibração isotônica |
+| Algoritmo | GradientBoosting + SMOTENC + calibração isotônica |
 | Alvo | `defasagem(t+1) < defasagem(t)` |
 | Validação | Split agrupado por aluno (`RA`), 25% teste |
 | Amostra | 1.365 pares aluno-ano (17,3% de eventos positivos) |
-| Recall | 0,735 |
-| ROC-AUC | 0,874 |
-| PR-AUC | 0,695 (piso do acaso: 0,173) |
+| Recall | 0,809 |
+| ROC-AUC | 0,881 |
+| PR-AUC | 0,662 (piso do acaso: 0,173) |
 
 Variáveis mais influentes: `defasagem`, `idade`, `ano_ingresso` e `ipv`.
 

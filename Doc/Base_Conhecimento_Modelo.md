@@ -82,32 +82,57 @@ determinística de `defasagem`, portanto redundante).
 | Variável | Motivo |
 |---|---|
 | `ian` | Redundante — função determinística de `defasagem`. |
+| `pedra` | Redundante — é o `inde` cortado em 4 faixas fixas, mesmo critério aplicado ao `ian`. |
 | `ipp` | 100% nula em 2022 (coluna não existe naquela aba). |
 | `ano` | Não generaliza: aprender "em 2022 acontece X" não serve para 2025. |
 
+Sobre a `pedra`: ela era usada nas primeiras versões, mas com importância por permutação de
+0,0033 — indistinguível de zero. Removê-la não custou desempenho (PR-AUC de 0,6444 para 0,6478
+na média de 5 splits, dentro do desvio de ±0,07) e alinha o modelo ao critério que já havia
+excluído o `ian`. A Pedra continua exibida no Streamlit como referência do PEDE, apenas não
+alimenta o modelo.
+
 ---
 
-## 3. O modelo: GradientBoosting + SMOTE + calibração isotônica
+## 3. O modelo: GradientBoosting + SMOTENC + calibração isotônica
+
+### 3.0 Por que SMOTENC, e não SMOTE
+
+O SMOTE cria alunos sintéticos interpolando entre vizinhos da classe minoritária. Nas versões
+anteriores ele rodava **depois** da codificação, sobre as colunas já transformadas em one-hot —
+o que produzia alunos com `instituicao = 0,4` num campo que só admite 0 ou 1, e `pedra = 2,7`
+numa escala de inteiros. São perfis impossíveis, e o modelo aprendia com eles.
+
+O `SMOTENC` reamostra no espaço **bruto**, antes da codificação: interpola as colunas numéricas
+e resolve as categóricas pela moda dos vizinhos, produzindo sempre categorias válidas. A ordem
+do pipeline passou a ser **imputação → SMOTENC → codificação → modelo**.
+
+O ganho não é de métrica — as diferenças ficam dentro do ruído entre splits — mas de validade:
+o modelo deixa de ser treinado com registros que não podem existir.
 
 ### 3.1 GradientBoosting vs. ExtraTrees
 
 | Métrica | **GradientBoosting** | ExtraTrees tunado |
 |---|---|---|
-| Acurácia | 0,8595 | **0,8637** |
-| Acurácia balanceada | **0,7657** | 0,7430 |
-| Precisão | 0,5720 | **0,5952** |
-| **Recall** | **0,6246** | 0,5619 |
-| F1 | **0,5963** | 0,5774 |
-| ROC-AUC | **0,8852** | 0,8773 |
-| **PR-AUC** | **0,6457** | 0,6347 |
+| Acurácia | 0,8554 | **0,8598** |
+| Acurácia balanceada | **0,7686** | 0,7559 |
+| Precisão | 0,5580 | **0,5763** |
+| **Recall** | **0,6382** | 0,6004 |
+| F1 | **0,5945** | 0,5864 |
+| ROC-AUC | 0,8831 | 0,8831 |
+| PR-AUC | 0,6419 | 0,6429 |
 
-**GradientBoosting** vence nas métricas que importam. O ExtraTrees só leva em acurácia bruta e
-precisão, por margens pequenas — e o erro mais caro aqui é deixar de identificar um aluno em
-risco, que é justamente o que o recall mede.
+**GradientBoosting** segue escolhido, mas com o SMOTENC a diferença estreitou: ROC-AUC empatou
+(0,8831 nos dois) e o PR-AUC ficou tecnicamente empatado — a vantagem de 0,001 do ExtraTrees é
+uma fração do desvio entre splits (±0,07), portanto ruído.
+
+O que continua separando os dois é o **recall**: 0,638 contra 0,600. Como o erro mais caro aqui
+é deixar de identificar um aluno em risco, essa diferença decide. O ExtraTrees leva acurácia
+bruta e precisão, ambas por margens pequenas e ambas menos relevantes para o objetivo.
 
 ### 3.2 Por que a calibração
 
-O SMOTE treina o modelo num universo artificialmente balanceado (metade dos alunos piorando),
+O SMOTENC treina o modelo num universo artificialmente balanceado (metade dos alunos piorando),
 o que **infla as probabilidades** em relação ao mundo real, onde só 17,3% pioram.
 
 A calibração isotônica corrige os números **sem alterar a ordenação** dos alunos — como ajustar
@@ -115,8 +140,8 @@ a escala de um termômetro que distingue bem quente de frio, mas marca alguns gr
 
 | | Brier (↓) | Desvio de calibração (↓) | PR-AUC |
 |---|---|---|---|
-| Sem calibração | 0,0989 | 0,054 | 0,646 |
-| **Calibrado** | **0,0938** | **0,024** | 0,646 |
+| Sem calibração | 0,1018 | 0,059 | 0,642 |
+| **Calibrado** | **0,0929** | **0,027** | 0,648 |
 
 O erro de calibração caiu pela metade, sem custo na capacidade de ordenação.
 
@@ -160,17 +185,28 @@ O modelo quase quadruplica essa capacidade.
 
 ### Métricas do modelo final
 
+Medidas no conjunto de teste, com o limiar escolhido de **0,20**:
+
 | Métrica | Valor | Leitura |
 |---|---|---|
-| Acurácia | 0,824 | 82% de acertos totais |
-| Acurácia balanceada | 0,791 | Desempenho equilibrado nas duas classes |
-| Precisão | 0,532 | De cada 10 sinalizados, ~5 pioram |
-| **Recall** | **0,735** | **Captura ~7 de cada 10 alunos que vão piorar** |
-| F1 | 0,617 | Bom equilíbrio |
-| ROC-AUC | 0,874 | Forte capacidade de ordenação |
-| PR-AUC | 0,695 | ~4× melhor que o acaso (piso 0,173) |
-| KS | 0,645 | Boa separação |
-| Brier | 0,100 | Probabilidades confiáveis |
+| Acurácia | 0,807 | 81% de acertos totais |
+| Acurácia balanceada | 0,808 | Desempenho equilibrado nas duas classes |
+| Precisão | 0,500 | De cada 10 sinalizados, ~5 pioram |
+| **Recall** | **0,809** | **Captura ~8 de cada 10 alunos que vão piorar** |
+| F1 | 0,618 | Bom equilíbrio |
+| ROC-AUC | 0,881 | Forte capacidade de ordenação |
+| PR-AUC | 0,662 | ~4× melhor que o acaso (piso 0,173) |
+| KS | 0,639 | Boa separação |
+| Brier | 0,102 | Probabilidades confiáveis |
+
+> **Comparando com a versão anterior** (SMOTE + `pedra`, limiar 0,25): o recall subiu de 0,735
+> para 0,809 e a precisão caiu de 0,532 para 0,500 — deslocamento explicado pela mudança do
+> limiar ótimo, não pelo modelo. O F1 ficou praticamente igual (0,617 → 0,618).
+>
+> O PR-AUC deste split caiu de 0,695 para 0,662, mas **isso é ruído de amostragem, não perda
+> real**: medido em 5 splits, o PR-AUC médio foi 0,6444 antes e 0,6478 depois, com desvio de
+> ±0,07 entre splits. Métricas de um split único desta base variam mais do que a diferença
+> observada — daí a comparação de 5 splits ser a referência.
 
 ---
 
@@ -184,14 +220,14 @@ Previsto vs. realidade, no conjunto de teste:
 
 | Faixa | Alunos | Previsto | Aconteceu |
 |---|---|---|---|
-| 0–10% | 195 | 3,1% | 3,1% ✅ |
-| 10–20% | 38 | 14,6% | 10,5% |
-| 20–30% | 44 | 23,9% | 34,1% |
-| 30–50% | 33 | 41,2% | 36,4% ✅ |
-| 50–70% | 22 | 58,3% | 50,0% |
-| 70–100% | 21 | 80,6% | 95,2% |
+| 0–10% | 205 | 3,3% | 4,4% ✅ |
+| 10–20% | 38 | 14,3% | 10,5% |
+| 20–30% | 29 | 24,7% | 34,5% |
+| 30–50% | 32 | 37,5% | 43,8% |
+| 50–70% | 25 | 60,0% | 40,0% |
+| 70–100% | 24 | 80,6% | 87,5% ✅ |
 
-Probabilidade média prevista **18,5%** vs. taxa real **19,3%** — praticamente idêntica.
+Probabilidade média prevista **18,6%** vs. taxa real **19,3%** — praticamente idêntica.
 
 **Isso autoriza a leitura de frequência no Streamlit:**
 
@@ -205,12 +241,20 @@ E **não**: "este aluno tem X% de chance" — afirmação impossível de verific
 
 | # | Feature | Importância | Interpretação |
 |---|---|---|---|
-| 1 | `defasagem` | **+0,233** | Quem já está defasado tende a se defasar mais — efeito acumulativo. |
-| 2 | `idade` | **+0,176** | A fase ideal sobe com a idade; mais velhos têm risco estrutural maior. |
-| 3 | `ano_ingresso` | **+0,113** | Tempo de casa na Passos Mágicos. |
-| 4 | `ipv` | **+0,110** | Ponto de Virada — indicador socioemocional mais preditivo. |
-| 5 | `ida` | +0,038 | Desempenho acadêmico, contribuição moderada. |
-| 6–13 | `instituicao`, `inde`, `ips`, `fase_ordem`, `ieg`, `genero`, `iaa`, `pedra` | < 0,03 | Contribuição pequena. |
+| 1 | `defasagem` | **+0,222** | Quem já está defasado tende a se defasar mais — efeito acumulativo. |
+| 2 | `idade` | **+0,164** | A fase ideal sobe com a idade; mais velhos têm risco estrutural maior. |
+| 3 | `ano_ingresso` | **+0,112** | Tempo de casa na Passos Mágicos. |
+| 4 | `ipv` | **+0,089** | Ponto de Virada — indicador socioemocional mais preditivo. |
+| 5 | `fase_ordem` | +0,029 | Fase cursada, contribuição pequena. |
+| 6–12 | `ieg`, `ips`, `ida`, `instituicao`, `inde`, `genero`, `iaa` | < 0,03 | Contribuição pequena. |
+
+⚠️ **Cuidado ao ler esta tabela variável a variável.** A importância por permutação embaralha uma
+coluna de cada vez; quando duas variáveis são correlacionadas, o modelo compensa a perda de uma
+usando a outra e a importância se **dilui** entre elas. Como `ida`, `ieg`, `ipv` e `inde` têm
+correlação de 0,45 a 0,82 entre si, o `ipv` acaba levando o crédito do fator comum e os demais
+aparecem perto de zero — não por serem irrelevantes, mas por serem substituíveis entre si.
+A leitura correta é **por bloco**: o bloco estrutural (`defasagem`, `idade`, `ano_ingresso`)
+concentra ~50% da importância, e o bloco de indicadores responde pelo restante.
 
 **Nota de equidade:** `genero` tem importância praticamente nula — o modelo não está
 discriminando por gênero.
@@ -258,14 +302,15 @@ import joblib
 art = joblib.load("modelo_risco_defasagem.joblib")
 modelo   = art["modelo"]        # pipeline completo + calibração
 limiar   = art["limiar"]        # sugerido
-features = art["features"]      # 13 colunas obrigatórias
+features = art["features"]      # 12 colunas obrigatórias
 faixas   = art["faixas_risco"]  # [(nome, min, max, ação), ...]
 ```
 
 Chaves disponíveis: `modelo`, `calibrado`, `limiar`, `limiar_recall75`, `faixas_risco`,
-`features`, `features_numericas`, `features_nominais`, `features_ordinais`, `ordem_pedra`,
+`features`, `features_numericas`, `features_nominais`, `features_categoricas`,
 `campos_obrigatorios`, `alvo`, `algoritmo`, `validacao`, `metricas_teste`,
-`importancia_features`, `taxa_positiva_base`, `n_amostras`, `data_treino`.
+`importancia_features`, `taxa_positiva_base`, `n_amostras`, `data_treino`,
+`leitura_probabilidade`.
 
 ### 7.2 Fazendo a previsão
 
@@ -296,29 +341,43 @@ dentro do pipeline.
 | `ida`, `ieg`, `iaa`, `ips`, `ipv`, `inde` | numérico | 0 a 10 |
 | `genero` | seleção | "Feminino" / "Masculino" |
 | `instituicao` | seleção | 6 opções: "Pública", "Privada", "Privada - Programa de Apadrinhamento", "Privada *Parcerias com Bolsa 100%", "Privada - Pagamento por *Empresa Parceira", "Concluiu o 3º EM" |
-| `pedra` | seleção | "Quartzo", "Ágata", "Ametista", "Topázio" |
+
+`pedra` **não** é mais campo do modelo (ver seção 2.4). O Streamlit continua exibindo a
+classificação, calculada a partir do INDE, como referência do PEDE para a equipe.
 
 ### ⚠️ 7.4 Por que a obrigatoriedade importa
 
-Se um campo ficar vazio, o pipeline preenche com a mediana da base, **descaracterizando o
-aluno**. Teste com um aluno real cuja probabilidade completa era **29,5%**:
+O pipeline **nunca falha** por campo vazio: o `SimpleImputer` preenche a lacuna com a mediana
+(ou a moda, nas categóricas) da base de treino. Essa é justamente a armadilha — em vez de um
+erro visível, o modelo devolve uma probabilidade de aparência normal, calculada sobre um aluno
+que não é o que está na sua frente.
 
-| Campo deixado em branco | Probabilidade resultante |
-|---|---|
-| (nenhum — completo) | **29,5%** |
-| `ipv` | 86,8% ⚠️ |
-| `ieg` | 52,1% |
-| `iaa` | 43,7% |
-| `idade` | 14,1% |
-| `defasagem` | 8,7% ⚠️ |
+O efeito é substituir o aluno pelo **aluno médio** naquele campo. Como o modelo aprendeu a
+distinguir alunos justamente pelo que os afasta da média, apagar essa distância desloca a
+previsão para o centro da distribuição — ou, quando o campo é um dos de maior peso, para o
+extremo oposto ao real.
 
-O mesmo aluno vira "risco altíssimo" ou "risco baixo" por um campo esquecido. A validação de
-formulário completo é **requisito de confiabilidade**, não preferência de interface.
+Duas propriedades tornam isso grave:
+
+- **A distorção não é proporcional ao número de campos.** Um único campo em branco basta para
+  mudar a faixa de risco, porque os quatro primeiros lugares em importância concentram a maior
+  parte da decisão (ver seção 6).
+- **A direção do erro é imprevisível.** Dependendo do campo omitido e de quanto o aluno se
+  afasta da mediana naquele indicador, o mesmo aluno pode aparecer como risco alto ou como
+  risco baixo. Não existe um "lado seguro" para errar.
+
+Por isso a validação de formulário completo é **requisito de confiabilidade, não preferência
+de interface**: sem ela, a interface produz números que parecem válidos e não são — o pior
+resultado possível para uma ferramenta de apoio à decisão.
+
+> Se for útil quantificar o efeito para a equipe, o teste é direto: pegue um aluno da base,
+> calcule a probabilidade completa e recalcule zerando um campo de cada vez, começando pelos de
+> maior importância. Refaça a cada re-treino — os valores mudam com o modelo.
 
 ### 7.5 Como exibir o resultado
 
 A probabilidade individual é uma **estimativa com incerteza**. O mesmo aluno, com o modelo
-treinado sobre 5 divisões diferentes, recebeu de 61,2% a 85,7% — amplitude de ~24 pontos.
+treinado sobre 5 divisões diferentes, recebeu de 18,8% a 28,0% — amplitude de ~9 pontos.
 
 Por isso:
 
@@ -327,12 +386,12 @@ Por isso:
 
    | Faixa | Intervalo | % da base | Taxa real de piora | Ação |
    |---|---|---|---|---|
-   | Baixo | < 25% | 73,4% | 6,9% | Sem sinal de alerta |
-   | Médio | 25–50% | 14,4% | 37,3% | Monitorar |
-   | Alto | ≥ 50% | 12,2% | 72,1% | Prioridade |
+   | Baixo | < 25% | 73,7% | 7,3% | Sem sinal de alerta |
+   | Médio | 25–50% | 12,5% | 40,9% | Monitorar |
+   | Alto | ≥ 50% | 13,9% | 63,3% | Prioridade |
 
-   A coluna "taxa real de piora" cresce de forma consistente entre as faixas (6,9% → 37,3% →
-   72,1%) — é a validação prática da calibração e o que sustenta a frase mostrada ao usuário.
+   A coluna "taxa real de piora" cresce de forma consistente entre as faixas (7,3% → 40,9% →
+   63,3%) — é a validação prática da calibração e o que sustenta a frase mostrada ao usuário.
 2. **Ranking de prioridade** — ordenar por probabilidade decrescente para atendimento em lote.
    A ordenação é a parte mais robusta do modelo.
 3. **Leitura de frequência** — "de cada 100 alunos assim, ~30 pioram".
@@ -347,7 +406,7 @@ Por isso:
 
 1. **Base pequena:** 1.365 pares aluno-ano, ~236 eventos positivos. Métricas variam ±0,04 a
    ±0,06 no PR-AUC entre divisões.
-2. **Incerteza individual:** amplitude de ~24 pontos percentuais para um mesmo aluno entre
+2. **Incerteza individual:** amplitude de ~9 pontos percentuais para um mesmo aluno entre
    modelos treinados em divisões diferentes. Daí a recomendação de faixas.
 3. **`IPP` fora do modelo:** ausente em 2022. Se a coleta for padronizada, vale re-treinar
    incluindo essa variável.
