@@ -282,215 +282,74 @@ def exibir_resultado(probabilidade: float, registro: dict):
 # ------------------------------------------------------------------
 # Abas: consulta individual e análise em lote
 # ------------------------------------------------------------------
-aba_individual, aba_lote = st.tabs(["👤 Aluno individual", "📄 Análise em lote (CSV)"])
+# aba_individual, aba_lote = st.tabs(["👤 Aluno individual", "📄 Análise em lote (CSV)"])
 
 # ------------------------------------------------------------------
 # Aba 1 — Formulário de aluno individual
 # ------------------------------------------------------------------
-with aba_individual:
-    with st.form("formulario_aluno"):
-        st.subheader("Dados do aluno")
+# with aba_individual:
+with st.form("formulario_aluno"):
+    st.subheader("Dados do aluno")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            idade = st.number_input("Idade", min_value=7, max_value=27, value=12, step=1)
-            genero = st.selectbox("Gênero", DOMINIOS["genero"])
-            ano_ingresso = st.number_input(
-                "Ano de ingresso na Passos Mágicos",
-                min_value=2016, max_value=2030, value=2022, step=1,
-            )
-        with col2:
-            fase_rotulo = st.selectbox("Fase cursada atualmente", list(FASES.keys()), index=2)
-            instituicao = st.selectbox("Instituição de ensino", DOMINIOS["instituicao"])
+    col1, col2 = st.columns(2)
+    with col1:
+        idade = st.number_input("Idade", min_value=7, max_value=27, value=12, step=1)
+        genero = st.selectbox("Gênero", DOMINIOS["genero"])
+        ano_ingresso = st.number_input(
+            "Ano de ingresso na Passos Mágicos",
+            min_value=2016, max_value=2030, value=2022, step=1,
+        )
+    with col2:
+        fase_rotulo = st.selectbox("Fase cursada atualmente", list(FASES.keys()), index=2)
+        instituicao = st.selectbox("Instituição de ensino", DOMINIOS["instituicao"])
 
-        st.subheader("Indicadores acadêmicos")
+    st.subheader("Indicadores acadêmicos")
 
-        col3, col4 = st.columns(2)
-        with col3:
-            ida = st.slider("IDA — Desempenho acadêmico", 0.0, 10.0, 6.9, 0.1)
-        with col4:
-            ieg = st.slider("IEG — Engajamento", 0.0, 10.0, 8.9, 0.1)
+    col3, col4 = st.columns(2)
+    with col3:
+        ida = st.slider("IDA — Desempenho acadêmico", 0.0, 10.0, 6.9, 0.1)
+    with col4:
+        ieg = st.slider("IEG — Engajamento", 0.0, 10.0, 8.9, 0.1)
 
-        st.subheader("Indicadores socioemocionais")
+    st.subheader("Indicadores socioemocionais")
 
-        col5, col6, col7 = st.columns(3)
-        with col5:
-            iaa = st.slider("IAA — Autoavaliação", 0.0, 10.0, 8.8, 0.1)
-        with col6:
-            ips = st.slider("IPS — Psicossocial", 0.0, 10.0, 6.9, 0.1)
-        with col7:
-            ipv = st.slider("IPV — Ponto de Virada", 0.0, 10.0, 7.8, 0.1)
+    col5, col6, col7 = st.columns(3)
+    with col5:
+        iaa = st.slider("IAA — Autoavaliação", 0.0, 10.0, 8.8, 0.1)
+    with col6:
+        ips = st.slider("IPS — Psicossocial", 0.0, 10.0, 6.9, 0.1)
+    with col7:
+        ipv = st.slider("IPV — Ponto de Virada", 0.0, 10.0, 7.8, 0.1)
 
-        st.subheader("Índice geral")
-        inde = st.slider("INDE — Índice de Desenvolvimento Educacional", 0.0, 10.0, 7.5, 0.01)
+    st.subheader("Índice geral")
+    inde = st.slider("INDE — Índice de Desenvolvimento Educacional", 0.0, 10.0, 7.5, 0.01)
 
-        enviado = st.form_submit_button("Calcular risco", use_container_width=True)
+    enviado = st.form_submit_button("Calcular risco", use_container_width=True)
 
-    # Prévia dos campos calculados automaticamente
-    fase_ordem = FASES[fase_rotulo]
-    defasagem_calc = calcular_defasagem(fase_ordem, idade)
-    pedra_calc = pedra_para_inde(inde)
+# Prévia dos campos calculados automaticamente
+fase_ordem = FASES[fase_rotulo]
+defasagem_calc = calcular_defasagem(fase_ordem, idade)
+pedra_calc = pedra_para_inde(inde)
 
-    st.caption(
-        f"Campos calculados automaticamente — "
-        f"**Fase ideal para a idade:** {fase_ideal_para_idade(idade)} | "
-        f"**Defasagem:** {defasagem_calc:+d} | "
-        f"**Pedra:** {pedra_calc}"
+st.caption(
+    f"Campos calculados automaticamente — "
+    f"**Fase ideal para a idade:** {fase_ideal_para_idade(idade)} | "
+    f"**Defasagem:** {defasagem_calc:+d} | "
+    f"**Pedra:** {pedra_calc}"
+)
+
+if enviado:
+    registro = montar_registro(
+        idade, genero, fase_ordem, ano_ingresso, instituicao,
+        ida, ieg, iaa, ips, ipv, inde,
     )
-
-    if enviado:
-        registro = montar_registro(
-            idade, genero, fase_ordem, ano_ingresso, instituicao,
-            ida, ieg, iaa, ips, ipv, inde,
+    try:
+        with st.spinner("Calculando..."):
+            probabilidade = prever(pd.DataFrame([registro]))[0]
+        st.divider()
+        exibir_resultado(probabilidade, registro)
+    except Exception:
+        st.error(
+            "Não foi possível calcular o risco com os dados informados. "
+            "Revise os campos e tente novamente."
         )
-        try:
-            with st.spinner("Calculando..."):
-                probabilidade = prever(pd.DataFrame([registro]))[0]
-            st.divider()
-            exibir_resultado(probabilidade, registro)
-        except Exception:
-            st.error(
-                "Não foi possível calcular o risco com os dados informados. "
-                "Revise os campos e tente novamente."
-            )
-
-# ------------------------------------------------------------------
-# Aba 2 — Análise em lote via CSV
-# ------------------------------------------------------------------
-with aba_lote:
-    st.write(
-        "Envie um CSV com uma linha por aluno para gerar o **ranking de "
-        "prioridade**. A ordenação por risco é a parte mais robusta do modelo."
-    )
-
-    COLUNAS_CSV = [
-        "idade", "genero", "fase_ordem", "ano_ingresso", "instituicao",
-        "ida", "ieg", "iaa", "ips", "ipv", "inde",
-    ]
-
-    with st.expander("Formato esperado do arquivo"):
-        st.write(
-            "O CSV precisa das colunas abaixo. `defasagem` e `pedra` são "
-            "calculadas automaticamente. A coluna `ra` é opcional e serve "
-            "apenas para identificar o aluno no resultado."
-        )
-        st.write(
-            "**Codificação:** o arquivo precisa estar em **UTF-8**. Arquivos "
-            "em Latin-1 / Windows-1252 são recusados, porque os acentos "
-            "chegariam corrompidos (`Pública` → `PÃºblica`) e não casariam "
-            "com as categorias esperadas pelo modelo."
-        )
-        st.code(", ".join(["ra (opcional)"] + COLUNAS_CSV))
-        exemplo = pd.DataFrame(
-            [
-                {"ra": "RA-101", "idade": 13, "genero": "Feminino", "fase_ordem": 2,
-                "ano_ingresso": 2021, "instituicao": "Pública", "ida": 6.2,
-                "ieg": 5.8, "iaa": 8.0, "ips": 6.5, "ipv": 6.0, "inde": 6.4},
-                {"ra": "RA-102", "idade": 10, "genero": "Masculino", "fase_ordem": 2,
-                "ano_ingresso": 2022, "instituicao": "Privada", "ida": 8.1,
-                "ieg": 9.0, "iaa": 9.2, "ips": 7.4, "ipv": 8.6, "inde": 8.3},
-            ]
-        )
-        st.dataframe(exemplo, hide_index=True, use_container_width=True)
-        st.download_button(
-            "Baixar CSV de exemplo",
-            exemplo.to_csv(index=False).encode("utf-8"),
-            "exemplo_alunos.csv",
-            "text/csv",
-        )
-
-    arquivo = st.file_uploader(
-        "Arquivo CSV",
-        type=["csv"],
-        help="O arquivo precisa estar codificado em UTF-8.",
-    )
-
-    if arquivo is not None:
-        try:
-            dados = ler_csv_utf8(arquivo)
-        except ValueError as erro:
-            st.error(str(erro))
-            st.stop()
-        except Exception:
-            st.error("Não foi possível ler o arquivo. Verifique se é um CSV válido.")
-            st.stop()
-
-        faltantes = [c for c in COLUNAS_CSV if c not in dados.columns]
-        if faltantes:
-            st.error(f"Colunas obrigatórias ausentes: {', '.join(faltantes)}")
-        elif dados[COLUNAS_CSV].isna().any().any():
-            colunas_com_nulo = dados[COLUNAS_CSV].columns[dados[COLUNAS_CSV].isna().any()]
-            st.error(
-                "Há campos vazios nas colunas: "
-                f"{', '.join(colunas_com_nulo)}. Todos os campos são obrigatórios — "
-                "valores ausentes distorcem a previsão."
-            )
-        else:
-            limiar = st.slider(
-                "Limiar de sinalização",
-                min_value=0.05, max_value=0.70,
-                value=float(LIMIAR_PADRAO), step=0.05,
-                help=(
-                    "Define a partir de que probabilidade um aluno é sinalizado. "
-                    "Menor limiar = mais alunos cobertos, mais falsos alarmes."
-                ),
-            )
-
-            registros = pd.DataFrame(
-                [
-                    montar_registro(
-                        linha["idade"], linha["genero"], linha["fase_ordem"],
-                        linha["ano_ingresso"], linha["instituicao"],
-                        linha["ida"], linha["ieg"], linha["iaa"],
-                        linha["ips"], linha["ipv"], linha["inde"],
-                    )
-                    for _, linha in dados.iterrows()
-                ]
-            )
-
-            try:
-                with st.spinner("Calculando risco de cada aluno..."):
-                    probabilidades = prever(registros)
-            except Exception:
-                st.error("Não foi possível calcular o risco para este arquivo.")
-                st.stop()
-
-            resultado = pd.DataFrame(
-                {
-                    "Aluno": dados["ra"] if "ra" in dados.columns else dados.index.astype(str),
-                    "Probabilidade": probabilidades,
-                    "Faixa": [faixa_de_risco(p)[0] for p in probabilidades],
-                    "Sinalizado": ["Sim" if p >= limiar else "Não" for p in probabilidades],
-                    "Defasagem": registros["defasagem"],
-                    "Idade": registros["idade"],
-                    "IPV": registros["ipv"],
-                }
-            ).sort_values("Probabilidade", ascending=False)
-
-            total = len(resultado)
-            sinalizados = int((resultado["Sinalizado"] == "Sim").sum())
-
-            col_a, col_b, col_c = st.columns(3)
-            col_a.metric("Alunos analisados", total)
-            col_b.metric("Sinalizados", f"{sinalizados} ({sinalizados / total:.0%})")
-            col_c.metric("Risco alto", int((resultado["Faixa"] == "Alto").sum()))
-
-            st.subheader("Ranking de prioridade")
-            st.dataframe(
-                resultado.style.format({"Probabilidade": "{:.1%}"}),
-                hide_index=True,
-                use_container_width=True,
-            )
-
-            st.download_button(
-                "Baixar resultado em CSV",
-                resultado.to_csv(index=False).encode("utf-8"),
-                "ranking_risco_defasagem.csv",
-                "text/csv",
-            )
-
-            st.caption(
-                "Atenda de cima para baixo conforme a capacidade da equipe. "
-                "A ordenação é mais confiável do que o valor absoluto de cada "
-                "probabilidade."
-            )
