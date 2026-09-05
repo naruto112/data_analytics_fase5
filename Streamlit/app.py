@@ -79,7 +79,7 @@ LIMIAR_PADRAO = artefato["limiar"]
 # ------------------------------------------------------------------
 # Domínios do formulário.
 # Os rótulos de gênero e instituição seguem exatamente as categorias
-# padronizadas que o modelo viu no treino (ver 03_Base_Conhecimento_Modelo.md,
+# padronizadas que o modelo viu no treino (ver Doc/Base_Conhecimento_Modelo.md,
 # seção 2.0). Enviar um valor fora desta lista faz o encoder ignorá-lo
 # silenciosamente e degrada a previsão.
 # ------------------------------------------------------------------

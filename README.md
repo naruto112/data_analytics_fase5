@@ -5,7 +5,8 @@ Desenvolvimento Educacional) da Associação Passos Mágicos, ciclos 2022–2024
 
 O modelo estima a **probabilidade de um aluno aumentar sua defasagem escolar no ciclo
 seguinte**, permitindo que a equipe pedagógica priorize acompanhamento preventivo. O resultado é
-entregue em uma aplicação Streamlit com consulta individual e análise em lote.
+entregue em uma aplicação Streamlit com consulta individual (a análise em lote está em
+desenvolvimento).
 
 ---
 
@@ -13,19 +14,25 @@ entregue em uma aplicação Streamlit com consulta individual e análise em lote
 
 ```
 .
-├── app.py                                 # Aplicação Streamlit
-├── requirements.txt                       # Dependências
+├── requirements.txt                            # Dependências
+│
+├── Streamlit/
+│   └── app.py                                  # Aplicação Streamlit
+│
 ├── Model/
-│   └── modelo_risco_defasagem.joblib      # Modelo treinado (pipeline + calibração)
+│   ├── Modelo_Risco_Defasagem_PEDE.ipynb       # Treino, avaliação e exportação do modelo
+│   └── modelo_risco_defasagem.joblib           # Modelo treinado (pipeline + calibração)
 │
-├── EDA_Passos_Magicos_PEDE_2022_2024_v2.ipynb   # Análise exploratória (10 perguntas do case)
-├── Modelo_Risco_Defasagem_PEDE.ipynb            # Treino, avaliação e exportação do modelo
+├── Eda/
+│   ├── BASE DE DADOS PEDE 2024 - DATATHON.xlsx # Base de dados (só para os notebooks)
+│   ├── EDA_ajustado_e_modelos.ipynb            # Análise exploratória (versão final)
+│   └── EDA_Passos_Magicos_PEDE_2022_2024.ipynb # Análise exploratória (versão inicial)
 │
-├── 01_Analise_Direcionamento_PEDE.md      # Cruzamento dos arquivos-fonte e direcionamento
-├── 02_Base_Conhecimento_PEDE.md           # Glossário, fórmulas e regras de negócio da PEDE
-├── 03_Base_Conhecimento_Modelo.md         # Documentação do modelo e guia do Streamlit
-│
-└── BASE_DE_DADOS_PEDE_2024_-_DATATHON.xlsx      # Base de dados (necessária só p/ notebooks)
+└── Doc/
+    ├── Base_Conhecimento_Modelo.md             # Documentação do modelo e guia do Streamlit
+    ├── Dicionário Dados Datathon.pdf           # Material de origem
+    ├── PEDE_ Pontos importantes.docx           # Material de origem
+    └── Relatório PEDE2020/2021/2022.pdf        # Material de origem
 ```
 
 ---
@@ -77,16 +84,14 @@ endereço manualmente.
 
 Para encerrar, pressione `Ctrl + C` no terminal.
 
-> **Onde fica o modelo:** o `app.py` procura o `modelo_risco_defasagem.joblib` automaticamente
-> na própria pasta e nas subpastas `Model/`, `model/`, `models/` e `modelo/`. Ele já vem no
-> repositório — não é necessário treinar nada para usar o app.
+> **Onde fica o modelo:** o `app.py` carrega o `Model/modelo_risco_defasagem.joblib`. Ele já vem
+> no repositório — não é necessário treinar nada para usar o app.
 >
-> Os caminhos são resolvidos a partir da pasta do `app.py`, então o comando funciona mesmo
-> executado de outro diretório (ex.: `streamlit run projeto/app.py`).
+> O caminho é resolvido a partir da pasta do `app.py`, e não do diretório de onde o comando foi
+> executado, então o app funciona chamado de qualquer lugar. Para apontar para outro arquivo
+> (útil em deploy), defina a variável de ambiente `MODELO_PATH`.
 
 ## Como usar a aplicação
-
-A interface tem duas abas.
 
 ### 👤 Aluno individual
 
@@ -103,9 +108,13 @@ Dois campos são **calculados automaticamente** e exibidos abaixo do formulário
 O resultado mostra a faixa de risco (🟢 Baixo / 🟡 Médio / 🔴 Alto), a probabilidade estimada e
 uma explicação dos fatores que mais pesaram.
 
-### 📄 Análise em lote (CSV)
+### 📄 Análise em lote (CSV) — *temporariamente desativada*
 
-Envie um CSV com uma linha por aluno para gerar o ranking de prioridade. Colunas obrigatórias:
+> Esta aba está desligada no código enquanto a interface é desenvolvida por partes. A descrição
+> abaixo vale para quando ela for reativada.
+
+Envie um CSV com uma linha por aluno para gerar o ranking de prioridade. O arquivo precisa estar
+codificado em **UTF-8**. Colunas obrigatórias:
 
 ```
 idade, genero, fase_ordem, ano_ingresso, instituicao, ida, ieg, iaa, ips, ipv, inde
@@ -133,7 +142,7 @@ Duas ressalvas importantes:
 2. **Risco baixo em aluno já muito defasado não significa que ele esteja bem.** Alunos com
    defasagem de −3 ou mais raramente se defasam ainda mais, então o modelo aponta risco baixo —
    mas isso se refere apenas ao *aumento* da defasagem. Para esses casos, avalie os demais
-   indicadores (IDA, IEG, IPV). Detalhes na seção 6.1 de `03_Base_Conhecimento_Modelo.md`.
+   indicadores (IDA, IEG, IPV). Detalhes na seção 6.1 de `Doc/Base_Conhecimento_Modelo.md`.
 
 O resultado é **apoio à decisão pedagógica**, não um veredito automático.
 
@@ -150,10 +159,11 @@ jupyter notebook
 
 Abra e execute:
 
-- `EDA_Passos_Magicos_PEDE_2022_2024_v2.ipynb` — análise exploratória
-- `Modelo_Risco_Defasagem_PEDE.ipynb` — treino do modelo (regenera o `.joblib`)
+- `Eda/EDA_ajustado_e_modelos.ipynb` — análise exploratória
+- `Model/Modelo_Risco_Defasagem_PEDE.ipynb` — treino do modelo (regenera o `.joblib`)
 
-O arquivo `BASE_DE_DADOS_PEDE_2024_-_DATATHON.xlsx` precisa estar na mesma pasta dos notebooks.
+Os notebooks localizam a base em `Eda/` automaticamente, tanto rodando a partir da pasta do
+próprio notebook quanto da raiz do projeto.
 
 ---
 
@@ -172,7 +182,7 @@ O arquivo `BASE_DE_DADOS_PEDE_2024_-_DATATHON.xlsx` precisa estar na mesma pasta
 Variáveis mais influentes: `defasagem`, `idade`, `ano_ingresso` e `ipv`.
 
 Documentação completa das decisões, métricas e limitações em
-[`03_Base_Conhecimento_Modelo.md`](03_Base_Conhecimento_Modelo.md).
+[`Doc/Base_Conhecimento_Modelo.md`](Doc/Base_Conhecimento_Modelo.md).
 
 ---
 
@@ -180,8 +190,9 @@ Documentação completa das decisões, métricas e limitações em
 
 | Sintoma | Causa provável | Solução |
 |---|---|---|
-| `modelo_risco_defasagem.joblib não encontrado` | O `.joblib` não está em nenhuma das pastas procuradas | A mensagem de erro lista os locais verificados. Mova o arquivo para um deles ou use `MODELO_PATH` |
+| `modelo_risco_defasagem.joblib não encontrado` | O `.joblib` não está em `Model/` | A mensagem de erro mostra o caminho procurado. Coloque o arquivo lá ou defina `MODELO_PATH` |
+| `No module named 'imblearn'` ao carregar o modelo | O app está rodando em um Python sem as dependências | Use `.venv/bin/streamlit run Streamlit/app.py`, que ignora o `PATH` |
 | Erro ou aviso ao carregar o modelo | Versão de `scikit-learn` ou `imbalanced-learn` diferente | Use as versões fixadas no `requirements.txt` ou re-treine pelo notebook |
-| `command not found: streamlit` | Ambiente virtual não ativado | Ative o `.venv` (passo 2) |
-| Porta 8501 ocupada | Outra instância rodando | `streamlit run app.py --server.port 8502` |
-| Previsão parece estranha em lote | Categoria fora do domínio esperado | Confira `genero` e `instituicao` (valores aceitos na seção 7.3 de `03_Base_Conhecimento_Modelo.md`) |
+| `command not found: streamlit` | Ambiente virtual não ativado — ou ativado, mas sobreposto no `PATH` por outro Python (o instalador do python.org escreve no `~/.zprofile`, que é lido depois da ativação) | Confirme com `which streamlit`. Se não apontar para o `.venv`, chame pelo caminho: `.venv/bin/streamlit run Streamlit/app.py` |
+| Porta 8501 ocupada | Outra instância rodando | `streamlit run Streamlit/app.py --server.port 8502` |
+| Previsão parece estranha em lote | Categoria fora do domínio esperado | Confira `genero` e `instituicao` (valores aceitos na seção 7.3 de `Doc/Base_Conhecimento_Modelo.md`) |
