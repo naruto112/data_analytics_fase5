@@ -157,12 +157,17 @@ CORES_FAIXA = {"Alto": "🔴", "Médio": "🟡", "Baixo": "🟢"}
 
 def montar_registro(
     idade, genero, fase_ordem, ano_ingresso, instituicao,
-    ida, ieg, iaa, ips, ipv, inde,
+    ida, ieg, iaa, ips, ipv, inde, defasagem,
 ) -> dict:
-    """Monta o registro no formato esperado pelo modelo, calculando os
-    campos derivados (defasagem e pedra)."""
+    """Monta o registro no formato esperado pelo modelo.
+
+    `defasagem` é informada por quem preenche, e não derivada de `fase_ordem`
+    e `idade`: o modelo foi treinado com a coluna medida da planilha do PEDE,
+    que diverge da fórmula em 10% das linhas da base. Como essa é a variável
+    de maior peso do modelo (~31%), derivá-la mudaria a entrada justamente
+    onde ela mais importa. `pedra` continua derivada do INDE."""
     return {
-        "defasagem": calcular_defasagem(fase_ordem, idade),
+        "defasagem": int(defasagem),
         "fase_ordem": int(fase_ordem),
         "idade": int(idade),
         "ano_ingresso": int(ano_ingresso),
@@ -260,6 +265,24 @@ with st.form("formulario_aluno"):
     with col2:
         fase_rotulo = st.selectbox("Fase cursada atualmente", list(FASES.keys()), index=2)
         instituicao = st.selectbox("Instituição de ensino", DOMINIOS["instituicao"])
+        defasagem = st.number_input(
+            "Defasagem",
+            min_value=-8, max_value=8, value=0, step=1,
+            help=(
+                "Fase Efetiva − Fase Ideal, como registrado no PEDE. "
+                "Negativo = aluno atrasado."
+            ),
+        )
+
+    st.caption(
+        "ℹ️ **Sobre a defasagem** — é a variável de maior peso do modelo "
+        "(cerca de 31% da decisão), então vale conferir o valor. "
+        "**Negativo = atrasado** (`Fase Efetiva − Fase Ideal`). "
+        "Atenção à direção, que é contraintuitiva: quem está **em dia** é quem "
+        "mais escorrega (27,9% pioram no ano seguinte, contra 2,5% entre os que "
+        "já estão em −2), porque a fase ideal sobe a cada ano e quem não avança "
+        "de fase perde posição automaticamente."
+    )
 
     st.subheader("Indicadores acadêmicos")
 
@@ -284,23 +307,31 @@ with st.form("formulario_aluno"):
 
     enviado = st.form_submit_button("Calcular risco", use_container_width=True)
 
-# Prévia dos campos calculados automaticamente
 fase_ordem = FASES[fase_rotulo]
-defasagem_calc = calcular_defasagem(fase_ordem, idade)
 pedra_calc = pedra_para_inde(inde)
 
-st.caption(
-    f"Campos calculados automaticamente — "
-    f"**Fase ideal para a idade:** {fase_ideal_para_idade(idade)} | "
-    f"**Defasagem:** {defasagem_calc:+d} | "
-    f"**Pedra:** {pedra_calc}"
-)
+st.caption(f"Campo calculado automaticamente — **Pedra:** {pedra_calc} (a partir do INDE)")
 
 if enviado:
     registro = montar_registro(
         idade, genero, fase_ordem, ano_ingresso, instituicao,
-        ida, ieg, iaa, ips, ipv, inde,
+        ida, ieg, iaa, ips, ipv, inde, defasagem,
     )
+
+    # Conferência não bloqueante: 10% da base real diverge da fórmula, então a
+    # divergência é plausível — o aviso confirma o valor, não o rejeita.
+    # Feita aqui, e não como prévia ao vivo, porque widgets dentro de um
+    # st.form só atualizam no envio.
+    defasagem_esperada = calcular_defasagem(fase_ordem, idade)
+    if int(defasagem) != defasagem_esperada:
+        st.warning(
+            f"Você informou defasagem **{int(defasagem):+d}**, mas a idade "
+            f"({idade} anos) e a fase cursada sugerem **{defasagem_esperada:+d}** "
+            f"(fase ideal para a idade: {fase_ideal_para_idade(idade)}). "
+            "Confirme o valor — divergências são normais e acontecem em cerca de "
+            "10% dos alunos da base, mas vale checar se não foi engano."
+        )
+
     try:
         with st.spinner("Calculando..."):
             probabilidade = prever(pd.DataFrame([registro]))[0]

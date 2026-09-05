@@ -95,12 +95,17 @@ Para encerrar, pressione `Ctrl + C` no terminal.
 Preencha o formulário com os dados do aluno e clique em **Calcular risco**. Todos os campos são
 obrigatórios.
 
-Dois campos são **calculados automaticamente** e exibidos abaixo do formulário:
+Um campo é **calculado automaticamente** e exibido abaixo do formulário:
 
 | Campo | Como é calculado |
 |---|---|
-| `defasagem` | Fase cursada − fase ideal para a idade |
 | `pedra` | Faixa correspondente ao INDE informado |
+
+A **defasagem** (`Fase Efetiva − Fase Ideal`, negativo = atrasado) é informada por quem
+preenche, e não derivada da idade e da fase. O modelo foi treinado com o valor medido no PEDE,
+que diverge da fórmula em 10% dos alunos da base — e como essa é a variável de maior peso do
+modelo (~31% da decisão), derivá-la mudaria a entrada justamente onde ela mais importa. Se o
+valor informado divergir do que idade e fase sugerem, o app avisa sem bloquear o cálculo.
 
 O resultado mostra a faixa de risco (🟢 Baixo / 🟡 Médio / 🔴 Alto), a probabilidade estimada e
 uma explicação dos fatores que mais pesaram.
