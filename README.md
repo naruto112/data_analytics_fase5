@@ -1,5 +1,13 @@
 # Previsão de Risco de Defasagem — Associação Passos Mágicos
 
+### 🚀 Aplicação no ar: **[previsaoriscodefasagem.streamlit.app](https://previsaoriscodefasagem.streamlit.app)**
+
+Não é preciso instalar nada para usar — o app está publicado no Streamlit Community Cloud.
+A primeira abertura pode levar cerca de um minuto: tanto o app quanto o serviço de previsão
+hibernam quando ficam ociosos.
+
+---
+
 Projeto de análise de dados e machine learning sobre a **PEDE** (Pesquisa Extensiva do
 Desenvolvimento Educacional) da Associação Passos Mágicos, ciclos 2022–2024.
 
@@ -48,6 +56,9 @@ gera e o que o serviço executa — mas **não é mais carregado pela aplicaçã
 ---
 
 ## Como rodar o Streamlit localmente
+
+> Só é necessário para desenvolver ou apontar o app para outro backend. Para apenas **usar**,
+> abra a [aplicação publicada](https://previsaoriscodefasagem.streamlit.app).
 
 ### Pré-requisitos
 
@@ -199,6 +210,7 @@ Como cada número foi obtido, por que este algoritmo e o que o modelo **não** c
 | Sintoma | Causa provável | Solução |
 |---|---|---|
 | A abertura da página demora quase um minuto | O serviço estava hibernando e precisou acordar | Normal no primeiro acesso. As consultas seguintes são rápidas |
+| No app publicado: "This app has gone to sleep" | O Streamlit Community Cloud hiberna apps sem acesso recente | Clique em *Yes, get this app back up!* e aguarde |
 | "O serviço de previsão não respondeu após 3 tentativas" | Serviço fora do ar, ou `API_URL` apontando para o lugar errado | Confira o endereço; teste com `curl $API_URL/api/v1/domains`. O app não calcula localmente |
 | "Usando as opções locais de reserva" | O `/domains` não respondeu na abertura | O formulário funciona, mas o cálculo precisa do serviço. Recarregue a página quando ele voltar |
 | "O serviço recusou os valores informados" | Algum campo caiu fora da faixa aceita pela API | A mensagem nomeia o campo. Confira o valor e reenvie |
