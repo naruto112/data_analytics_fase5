@@ -11,6 +11,14 @@ O modelo não roda dentro do app: ele é servido por uma **API externa**, que o 
 consulta. O `.joblib` continua no repositório como artefato de referência — é o que o notebook
 gera e o que o serviço executa — mas **não é mais carregado pela aplicação**.
 
+> 📘 **[Base de Conhecimento do Modelo](Doc/Base_Conhecimento_Modelo.md)** — a documentação
+> técnica completa: decisões de escopo, escolha do algoritmo, métricas e calibração, variáveis
+> mais influentes, o guia de implementação do serviço e as limitações a comunicar.
+>
+> Este README cobre **como usar** o projeto. A Base de Conhecimento cobre **por que o modelo é
+> assim e o quanto se pode confiar nele** — é a leitura indicada para quem vai avaliar, manter
+> ou hospedar o modelo.
+
 ---
 
 ## Estrutura do repositório
@@ -28,8 +36,7 @@ gera e o que o serviço executa — mas **não é mais carregado pela aplicaçã
 │
 ├── Eda/
 │   ├── BASE DE DADOS PEDE 2024 - DATATHON.xlsx # Base de dados (só para os notebooks)
-│   ├── EDA_ajustado_e_modelos.ipynb            # Análise exploratória (versão final)
-│   └── EDA_Passos_Magicos_PEDE_2022_2024.ipynb # Análise exploratória (versão inicial)
+│   └── EDA_ajustado_e_modelos.ipynb            # Análise exploratória
 │
 └── Doc/
     ├── Base_Conhecimento_Modelo.md             # Documentação do modelo e contrato do serviço
@@ -142,7 +149,8 @@ Duas ressalvas importantes:
 2. **Risco baixo em aluno já muito defasado não significa que ele esteja bem.** Alunos com
    defasagem de −3 ou mais raramente se defasam ainda mais, então o modelo aponta risco baixo —
    mas isso se refere apenas ao *aumento* da defasagem. Para esses casos, avalie os demais
-   indicadores (IDA, IEG, IPV). Detalhes na seção 6.1 de `Doc/Base_Conhecimento_Modelo.md`.
+   indicadores (IDA, IEG, IPV). Detalhes na seção 6.1 da
+   [Base de Conhecimento](Doc/Base_Conhecimento_Modelo.md).
 
 O resultado é **apoio à decisão pedagógica**, não um veredito automático.
 
@@ -181,8 +189,8 @@ próprio notebook quanto da raiz do projeto.
 
 Variáveis mais influentes: `defasagem`, `idade`, `ano_ingresso` e `ipv`.
 
-Documentação completa das decisões, métricas e limitações em
-[`Doc/Base_Conhecimento_Modelo.md`](Doc/Base_Conhecimento_Modelo.md).
+Como cada número foi obtido, por que este algoritmo e o que o modelo **não** consegue responder:
+[Base de Conhecimento do Modelo](Doc/Base_Conhecimento_Modelo.md).
 
 ---
 
