@@ -292,9 +292,29 @@ Essa ressalva está implementada no app: a explicação exibida muda conforme a 
 do aluno, para não induzir a equipe a concluir que "risco baixo = aluno bem".
 
 
-## 7. Guia de implementação do Streamlit
+## 7. Guia de implementação
 
-### 7.1 Carregando o artefato
+O modelo é executado por um **serviço HTTP**, não pelo Streamlit. O app é cliente puro: não
+carrega o `.joblib` nem calcula faixa de risco localmente. As seções 7.1 e 7.2 descrevem, então,
+o que o **serviço** faz internamente; 7.3 e 7.4 valem para os dois lados.
+
+### 7.0 O fluxo do app
+
+| Passo | Chamada | Para quê |
+|---|---|---|
+| 1 | `GET /api/v1/domains` | Monta os selects do formulário. Feito na abertura da página, o que também acorda o serviço |
+| 2 | `POST /api/v1/defasagem-risk-records` | Envia os 12 campos e recebe o resultado |
+| 3 | `GET /api/v1/defasagem-risk-records/{id}` | Só se o POST não trouxer a probabilidade no corpo |
+
+Cada chamada é repetida **3 vezes com 30 s de intervalo** e timeout de 60 s, porque o serviço
+hiberna quando ocioso. Respostas 4xx **não** são repetidas: são erro do dado enviado, e insistir
+só faria quem preenche esperar por uma resposta que não muda.
+
+O `POST` devolve `probabilidade`, `faixa_risco` e `acao_sugerida` já prontos — o app não
+reimplementa o corte de faixas. Os registros criados são **efêmeros**, então o `id` serve para
+rastreio imediato junto ao backend, não para consulta posterior.
+
+### 7.1 Carregando o artefato (lado do serviço)
 
 ```python
 import joblib
@@ -312,7 +332,7 @@ Chaves disponíveis: `modelo`, `calibrado`, `limiar`, `limiar_recall75`, `faixas
 `importancia_features`, `taxa_positiva_base`, `n_amostras`, `data_treino`,
 `leitura_probabilidade`.
 
-### 7.2 Fazendo a previsão
+### 7.2 Fazendo a previsão (lado do serviço)
 
 ```python
 proba = modelo.predict_proba(df[features])[:, 1]
@@ -330,7 +350,9 @@ dentro do pipeline.
 ### 7.3 Campos do formulário (todos obrigatórios)
 
 > As opções de `genero` e `instituicao` abaixo já refletem a **padronização** descrita na
-> seção 2.0 — use exatamente estes rótulos, pois são os que o modelo reconhece.
+> seção 2.0 — use exatamente estes rótulos, pois são os que o modelo reconhece. O app não os
+> mantém duplicados: busca as listas no `GET /domains`, e a cópia local só entra em uso quando
+> o serviço está fora do ar.
 
 | Campo | Tipo | Domínio |
 |---|---|---|
@@ -338,7 +360,7 @@ dentro do pipeline.
 | `fase_ordem` | numérico | 0 (ALFA) a 8 |
 | `idade` | numérico | Anos |
 | `ano_ingresso` | numérico | Ano de entrada na Passos Mágicos |
-| `ida`, `ieg`, `iaa`, `ips`, `ipv`, `inde` | numérico | 0 a 10 |
+| `ida`, `ieg`, `iaa`, `ips`, `ipv`, `inde` | numérico | 0 a 10 — o IPV real chega a **10,01** por arredondamento da metodologia, então o teto aceito é 10,1 |
 | `genero` | seleção | "Feminino" / "Masculino" |
 | `instituicao` | seleção | 6 opções: "Pública", "Privada", "Privada - Programa de Apadrinhamento", "Privada *Parcerias com Bolsa 100%", "Privada - Pagamento por *Empresa Parceira", "Concluiu o 3º EM" |
 

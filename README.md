@@ -7,6 +7,10 @@ O modelo estima a **probabilidade de um aluno aumentar sua defasagem escolar no 
 seguinte**, permitindo que a equipe pedagógica priorize acompanhamento preventivo. O resultado é
 entregue em uma aplicação Streamlit de consulta individual.
 
+O modelo não roda dentro do app: ele é servido por uma **API externa**, que o Streamlit
+consulta. O `.joblib` continua no repositório como artefato de referência — é o que o notebook
+gera e o que o serviço executa — mas **não é mais carregado pela aplicação**.
+
 ---
 
 ## Estrutura do repositório
@@ -20,7 +24,7 @@ entregue em uma aplicação Streamlit de consulta individual.
 │
 ├── Model/
 │   ├── Modelo_Risco_Defasagem_PEDE.ipynb       # Treino, avaliação e exportação do modelo
-│   └── modelo_risco_defasagem.joblib           # Modelo treinado (pipeline + calibração)
+│   └── modelo_risco_defasagem.joblib           # Modelo treinado — servido pela API, não pelo app
 │
 ├── Eda/
 │   ├── BASE DE DADOS PEDE 2024 - DATATHON.xlsx # Base de dados (só para os notebooks)
@@ -28,7 +32,7 @@ entregue em uma aplicação Streamlit de consulta individual.
 │   └── EDA_Passos_Magicos_PEDE_2022_2024.ipynb # Análise exploratória (versão inicial)
 │
 └── Doc/
-    ├── Base_Conhecimento_Modelo.md             # Documentação do modelo e guia do Streamlit
+    ├── Base_Conhecimento_Modelo.md             # Documentação do modelo e contrato do serviço
     ├── Dicionário Dados Datathon.pdf           # Material de origem
     ├── PEDE_ Pontos importantes.docx           # Material de origem
     └── Relatório PEDE2020/2021/2022.pdf        # Material de origem
@@ -83,17 +87,31 @@ endereço manualmente.
 
 Para encerrar, pressione `Ctrl + C` no terminal.
 
-> **Onde fica o modelo:** o `app.py` carrega o `Model/modelo_risco_defasagem.joblib`. Ele já vem
-> no repositório — não é necessário treinar nada para usar o app.
+> **Onde fica o modelo:** em uma API externa, que o app consulta. Não é preciso treinar nem
+> baixar nada para usar a aplicação.
 >
-> O caminho é resolvido a partir da pasta do `app.py`, e não do diretório de onde o comando foi
-> executado, então o app funciona chamado de qualquer lugar. Para apontar para outro arquivo
-> (útil em deploy), defina a variável de ambiente `MODELO_PATH`.
+> O endereço padrão já vem configurado. Para apontar para outro ambiente — um backend rodando
+> na sua máquina, por exemplo — defina a variável de ambiente `API_URL`:
+>
+> ```bash
+> API_URL=http://localhost:8000 .venv/bin/streamlit run Streamlit/app.py
+> ```
+>
+> **A primeira consulta pode demorar até um minuto.** O serviço hiberna quando fica ocioso, e
+> acordar leva tempo. O app repete cada chamada **3 vezes com 30 s de intervalo** e mostra o
+> progresso na tela. Para adiantar essa espera, ele já consulta o serviço na abertura da
+> página, ao carregar as opções do formulário — quando você clica em *Calcular risco*, o
+> serviço normalmente já está acordado.
 
 ## Como usar a aplicação
 
 Preencha o formulário com os dados do aluno e clique em **Calcular risco**. Todos os campos são
 obrigatórios.
+
+As opções de **gênero**, **instituição** e **fase** vêm do próprio serviço, para que o
+formulário não possa divergir do que o modelo aceita. Se o serviço estiver fora do ar, o app
+avisa e usa uma lista local de reserva — dá para preencher, mas o cálculo só sai com o serviço
+no ar.
 
 A **defasagem** (`Fase Efetiva − Fase Ideal`, negativo = atrasado) é informada por quem
 preenche, e não derivada da idade e da fase. O modelo foi treinado com o valor medido no PEDE,
@@ -172,9 +190,10 @@ Documentação completa das decisões, métricas e limitações em
 
 | Sintoma | Causa provável | Solução |
 |---|---|---|
-| `modelo_risco_defasagem.joblib não encontrado` | O `.joblib` não está em `Model/` | A mensagem de erro mostra o caminho procurado. Coloque o arquivo lá ou defina `MODELO_PATH` |
-| `No module named 'imblearn'` ao carregar o modelo | O app está rodando em um Python sem as dependências | Use `.venv/bin/streamlit run Streamlit/app.py`, que ignora o `PATH` |
-| Erro ou aviso ao carregar o modelo | Versão de `scikit-learn` ou `imbalanced-learn` diferente | Use as versões fixadas no `requirements.txt` ou re-treine pelo notebook |
+| A abertura da página demora quase um minuto | O serviço estava hibernando e precisou acordar | Normal no primeiro acesso. As consultas seguintes são rápidas |
+| "O serviço de previsão não respondeu após 3 tentativas" | Serviço fora do ar, ou `API_URL` apontando para o lugar errado | Confira o endereço; teste com `curl $API_URL/api/v1/domains`. O app não calcula localmente |
+| "Usando as opções locais de reserva" | O `/domains` não respondeu na abertura | O formulário funciona, mas o cálculo precisa do serviço. Recarregue a página quando ele voltar |
+| "O serviço recusou os valores informados" | Algum campo caiu fora da faixa aceita pela API | A mensagem nomeia o campo. Confira o valor e reenvie |
+| `No module named 'requests'` | Dependências não instaladas no Python em uso | Use `.venv/bin/streamlit run Streamlit/app.py`, que ignora o `PATH` |
 | `command not found: streamlit` | Ambiente virtual não ativado — ou ativado, mas sobreposto no `PATH` por outro Python (o instalador do python.org escreve no `~/.zprofile`, que é lido depois da ativação) | Confirme com `which streamlit`. Se não apontar para o `.venv`, chame pelo caminho: `.venv/bin/streamlit run Streamlit/app.py` |
 | Porta 8501 ocupada | Outra instância rodando | `streamlit run Streamlit/app.py --server.port 8502` |
-| Previsão parece estranha | Categoria fora do domínio esperado | Confira `genero` e `instituicao` (valores aceitos na seção 7.3 de `Doc/Base_Conhecimento_Modelo.md`) |

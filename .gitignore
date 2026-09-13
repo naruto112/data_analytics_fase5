@@ -1,2 +1,5 @@
 .DS_Store
 .venv
+Doc/testes_api
+Doc/Divergencias_API_vs_Modelo.md
+Streamlit/__pycache__
